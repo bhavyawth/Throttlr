@@ -1,0 +1,15 @@
+// =============================================================================
+// components/dashboard/
+//
+// This directory contains custom dashboard-specific components.
+//
+// Planned components:
+//  - Sidebar.tsx          — Navigation sidebar with links to all pages
+//  - Header.tsx           — Top bar with user menu and notifications
+//  - StatsCard.tsx        — Metric card (title, value, trend indicator)
+//  - RuleForm.tsx         — Create/edit rule form (used in modal/drawer)
+//  - RequestsChart.tsx    — Recharts area chart for request volume over time
+//  - TopRulesChart.tsx    — Recharts bar chart for top rules by request count
+//  - LogsTable.tsx        — Paginated request logs table
+//  - ApiKeyCard.tsx       — API key display with copy/toggle/delete
+// =============================================================================

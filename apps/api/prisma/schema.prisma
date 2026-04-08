@@ -1,0 +1,63 @@
+// =============================================================================
+// Prisma Schema — Throttlr API
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum Algorithm {
+  SLIDING_WINDOW
+  TOKEN_BUCKET
+}
+
+// ── Models ────────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  key       String   @unique // SHA-256 hashed, never stored raw
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  rules       Rule[]
+  requestLogs RequestLog[]
+
+  @@map("api_keys")
+}
+
+model Rule {
+  id                String    @id @default(cuid())
+  name              String
+  windowSizeSeconds Int
+  maxRequests       Int
+  algorithm         Algorithm @default(SLIDING_WINDOW)
+  createdAt         DateTime  @default(now())
+
+  apiKeyId String
+  apiKey   ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId])
+  @@map("rules")
+}
+
+model RequestLog {
+  id        String   @id @default(cuid())
+  userId    String   // Identifier passed by the consumer (IP, user ID, etc.)
+  allowed   Boolean
+  timestamp DateTime @default(now())
+
+  apiKeyId String
+  apiKey   ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId, timestamp])
+  @@index([userId, timestamp])
+  @@map("request_logs")
+}

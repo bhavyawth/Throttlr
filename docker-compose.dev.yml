@@ -1,0 +1,85 @@
+version: "3.9"
+
+# =============================================================================
+# Throttlr — Development Docker Compose (hot reload)
+# Usage: docker-compose -f docker-compose.dev.yml up
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: throttlr_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: throttlr
+      POSTGRES_PASSWORD: throttlr_secret
+      POSTGRES_DB: throttlr_db
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U throttlr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: throttlr_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+      target: development
+    container_name: throttlr_api_dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 8000
+      DATABASE_URL: postgresql://throttlr:throttlr_secret@postgres:5432/throttlr_db?schema=public
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: debug
+    volumes:
+      # Mount source for hot reload
+      - ./apps/api/src:/app/apps/api/src
+      - ./packages:/app/packages
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: npm run dev --workspace=apps/api
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: infra/docker/dashboard.Dockerfile
+      target: development
+    container_name: throttlr_dashboard_dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:8000/v1
+    volumes:
+      - ./apps/dashboard:/app/apps/dashboard
+      - ./packages:/app/packages
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    command: npm run dev --workspace=apps/dashboard
+
+volumes:
+  postgres_dev_data:

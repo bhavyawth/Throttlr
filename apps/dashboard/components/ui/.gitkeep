@@ -1,0 +1,11 @@
+// =============================================================================
+// components/ui/
+//
+// This directory is reserved for shadcn/ui components.
+// Install components using the shadcn CLI:
+//
+//   npx shadcn-ui@latest init
+//   npx shadcn-ui@latest add button card input label table badge dialog
+//
+// Do NOT manually create files here — let the shadcn CLI manage them.
+// =============================================================================
