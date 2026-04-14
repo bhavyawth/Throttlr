@@ -1,27 +1,83 @@
-// =============================================================================
-// Middleware: Error Handler
-//
-// What goes here:
-//  - Express 4-argument error handling middleware (must be registered last)
-//  - Catch ZodError → 400 with validation details
-//  - Catch known custom errors (ThrottlrError, NotFoundError) → appropriate status
-//  - Catch Prisma errors (P2002 unique constraint, P2025 not found) → mapped status
-//  - All other errors → 500 with generic message (never leak stack in production)
-//  - Log errors via pino logger (import from index.ts or a shared logger module)
-//  - Response shape: { success: false, error: string, details?: unknown }
-// =============================================================================
-
 import type { Request, Response, NextFunction } from "express";
+import { Prisma } from "@prisma/client";
+import { ZodError } from "zod";
+import { logger } from "../lib/logger";
 
+export class AppError extends Error {
+  constructor(
+    public statusCode: number,
+    message: string,
+    public errorCode?: string
+  ) {
+    super(message);
+    this.name = "AppError";
+  }
+}
+export class NotFoundError extends AppError {
+  constructor(resource: string) {
+    super(404, `${resource} not found`, "NOT_FOUND");
+  }
+}
+export class ConflictError extends AppError {
+  constructor(message: string) {
+    super(409, message, "CONFLICT");
+  }
+}
+
+// to recieve error and get distinguished -> 4 args needed
 export function errorMiddleware(
   err: Error,
   _req: Request,
   res: Response,
   _next: NextFunction
 ): void {
-  // TODO: Implement structured error handling
+  // zod validation errors
+  if (err instanceof ZodError) {
+    res.status(400).json({
+      success: false,
+      error: "Validation failed",
+      errorCode: "VALIDATION_ERROR",
+      details: err.flatten().fieldErrors, 
+    });
+    return;
+  }
+  // our own AppError / NotFoundError / ConflictError → use its status
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      errorCode: err.errorCode,
+    });
+    return;
+  }
+  // prisma errors
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    switch (err.code) {
+      case "P2002": 
+        res.status(409).json({
+          success: false,
+          error: "Resource already exists",
+          errorCode: "CONFLICT",
+        });
+        return;
+      case "P2025": 
+        res.status(404).json({
+          success: false,
+          error: "Resource not found",
+          errorCode: "NOT_FOUND",
+        });
+        return;
+    }
+  }
+  // everything else → 500
+  logger.error({ err, stack: err.stack }, "Unhandled error");
+
   res.status(500).json({
     success: false,
-    error: err.message ?? "Internal server error",
+    error:
+      process.env.NODE_ENV === "production"
+        ? "Internal server error"
+        : err.message,
+    errorCode: "INTERNAL_ERROR",
   });
 }
