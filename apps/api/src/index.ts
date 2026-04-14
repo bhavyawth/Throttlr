@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import pino from "pino";
+import { logger } from "./lib/logger";
 
 // Route imports (uncomment as implemented)
 // import { checkRouter } from "./routes/check.route";
@@ -11,15 +11,6 @@ import pino from "pino";
 // Middleware imports (uncomment as implemented)
 // import { authMiddleware } from "./middleware/auth.middleware";
 // import { errorMiddleware } from "./middleware/error.middleware";
-
-// ── Logger ────────────────────────────────────────────────────────────────────
-export const logger = pino({
-  level: process.env.LOG_LEVEL ?? "info",
-  transport:
-    process.env.NODE_ENV !== "production"
-      ? { target: "pino-pretty", options: { colorize: true } }
-      : undefined,
-});
 
 // ── App Setup ─────────────────────────────────────────────────────────────────
 const app = express();

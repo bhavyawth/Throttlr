@@ -24,7 +24,7 @@ export enum Algorithm {
 export interface ApiKey {
   id: string;
   name: string;
-  key: string; // hashed — never return the raw key after creation
+  key: string; // hashed
   isActive: boolean;
   createdAt: Date;
 }
@@ -35,7 +35,7 @@ export interface ApiKeyCreateInput {
 
 export interface ApiKeyCreateResponse {
   apiKey: ApiKey;
-  rawKey: string; // returned ONCE on creation, never stored in plaintext
+  rawKey: string; // returned ONCE on creation
 }
 
 // ── Rule ─────────────────────────────────────────────────────────────────────
@@ -58,12 +58,21 @@ export interface RuleCreateInput {
   apiKeyId: string;
 }
 
+export interface RuleUpdateInput {
+  name?: string;
+  windowSizeSeconds?: number;
+  maxRequests?: number;
+  algorithm?: Algorithm;
+  isActive?: boolean;
+}
+
 // ── Request Log ───────────────────────────────────────────────────────────────
 
 export interface RequestLog {
   id: string;
   userId: string;
   apiKeyId: string;
+  ruleId: string;
   allowed: boolean;
   timestamp: Date;
 }
@@ -73,6 +82,7 @@ export interface RequestLog {
 export interface RateLimitCheckRequest {
   identifier: string; // e.g. user ID, IP address
   ruleId: string;
+  apiKeyId: string;
 }
 
 export interface RateLimitCheckResponse {
@@ -88,6 +98,7 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  errorCode?: string; // ← e.g. "RATE_LIMIT_EXCEEDED", "INVALID_API_KEY"
   message?: string;
 }
 

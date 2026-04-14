@@ -41,9 +41,12 @@ export class RateLimiter {
    * Check if a request should be allowed under the given rule.
    * @throws {Error} When the API returns a non-2xx response
    */
-  async check(_options: CheckOptions): Promise<CheckResult> {
-    // TODO: POST /v1/check with identifier and ruleId
-    // TODO: Handle 429 responses by throwing RateLimitError
-    throw new Error("Not implemented");
+  async check(options: CheckOptions): Promise<CheckResult> {
+    const res = await this.http.post("/v1/check", {
+      identifier: options.identifier,
+      ruleId: options.ruleId,
+    });
+
+    return res.data;
   }
 }
