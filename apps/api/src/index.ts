@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { logger } from "./lib/logger";
+import { redisService } from "./services/redis.service";
 
 // Route imports (uncomment as implemented)
 // import { checkRouter } from "./routes/check.route";
@@ -37,9 +38,25 @@ app.get("/health", (_req, res) => {
 // TODO: Mount error middleware last
 // app.use(errorMiddleware);
 
-// ── Server Start ──────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  logger.info({ port: PORT }, "🚀 Throttlr API server started");
+// connect to redisservice before starting the server
+async function bootstrap(): Promise<void> {
+  await redisService.connect();
+  app.listen(PORT, () => {
+    logger.info({ port: PORT }, "🚀 Throttlr API server started");
+  });
+}
+
+bootstrap().catch((err) => {
+  logger.fatal({ err }, "Failed to start server");
+  process.exit(1);
 });
+// avoid dirty shutdown
+async function shutdown(): Promise<void> {
+  logger.info("Shutting down...");
+  await redisService.disconnect();
+  process.exit(0);
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
 
 export default app;
