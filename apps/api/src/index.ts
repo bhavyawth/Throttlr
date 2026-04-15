@@ -7,7 +7,7 @@ import { redisService } from "./services/redis.service";
 // route imports
 import { checkRouter } from "./routes/check.route";
 import { rulesRouter } from "./routes/rules.route";
-// import { statsRouter } from "./routes/stats.route";
+import { statsRouter } from "./routes/stats.route";
 // middleware imports
 import { authMiddleware } from "./middleware/auth.middleware";
 import { errorMiddleware } from "./middleware/error.middleware";
@@ -24,11 +24,11 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// api v1 routes
-app.use("/v1", authMiddleware);
-app.use("/v1/check", checkRouter);
-app.use("/v1/rules", rulesRouter);
-// app.use("/v1/stats", statsRouter);
+// api routes
+app.use("/", authMiddleware);
+app.use("/check", checkRouter);
+app.use("/rules", rulesRouter);
+app.use("/stats", statsRouter);
 
 app.use(errorMiddleware);
 

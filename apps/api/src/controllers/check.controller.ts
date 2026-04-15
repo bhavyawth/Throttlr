@@ -26,6 +26,7 @@ const performCheck = async (req: Request, res: Response, next: NextFunction) => 
       .create({
         data: {
           userId: identifier,
+          ruleId,
           allowed: result.allowed,
           apiKeyId: req.apiKey.id,
         },
