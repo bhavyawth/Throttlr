@@ -9,6 +9,7 @@ import prisma from "./lib/prisma";
 import { checkRouter } from "./routes/check.route";
 import { rulesRouter } from "./routes/rules.route";
 import { statsRouter } from "./routes/stats.route";
+import { keysRouter } from "./routes/keys.route";
 // middleware imports
 import { authMiddleware } from "./middleware/auth.middleware";
 import { errorMiddleware } from "./middleware/error.middleware";
@@ -60,7 +61,10 @@ app.get("/health", async (_req, res) => {
   });
 });
 
-// api routes
+// public routes (no auth required)
+app.use("/keys", keysRouter);
+
+// protected routes (auth required)
 app.use("/", authMiddleware);
 app.use("/check", checkRouter);
 app.use("/rules", rulesRouter);
