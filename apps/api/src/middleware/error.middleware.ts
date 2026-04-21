@@ -33,11 +33,14 @@ export function errorMiddleware(
 ): void {
   // zod validation errors
   if (err instanceof ZodError) {
+    const errors = err.issues.map((issue) => ({
+      field: issue.path.length > 0 ? issue.path.join(".") : "unknown",
+      message: issue.message,
+    }));
     res.status(400).json({
       success: false,
-      error: "Validation failed",
       errorCode: "VALIDATION_ERROR",
-      details: err.flatten().fieldErrors, 
+      errors,
     });
     return;
   }
