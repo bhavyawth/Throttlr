@@ -16,7 +16,7 @@ import { errorMiddleware } from "./middleware/error.middleware";
 import { rateLimitMiddleware } from "./middleware/rate-limit.middleware";
 
 const app = express();
-const PORT = parseInt(process.env.PORT ?? "8000", 10);
+const PORT = parseInt(process.env.PORT ?? "8080", 10);
 // global middlewares
 app.use(cors());
 app.use(express.json());
