@@ -20,12 +20,14 @@ model ApiKey {
   id        String   @id @default(cuid())
   key       String   @unique // SHA-256 hashed, never stored raw
   name      String
+  ownerId   String   // Clerk user ID — owner of this key
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
   rules       Rule[]
   requestLogs RequestLog[]
 
+  @@index([ownerId])
   @@map("api_keys")
 }
 

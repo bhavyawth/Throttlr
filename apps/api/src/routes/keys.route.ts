@@ -4,8 +4,9 @@ import { authMiddleware } from "../middleware/auth.middleware";
 
 export const keysRouter = Router();
 
-// no auth-middleware here
-keysRouter.post("/", keysController.createKey);
+// All key management routes require auth
+keysRouter.use(authMiddleware);
 
-keysRouter.get("/me", authMiddleware, keysController.getKey);
-keysRouter.delete("/me", authMiddleware, keysController.revokeKey);
+keysRouter.get("/", keysController.listKeys);
+keysRouter.post("/", keysController.createKey);
+keysRouter.delete("/:id", keysController.revokeKey);

@@ -15,7 +15,7 @@ const checkSchema = z.object({
 const performCheck = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { identifier, ruleId } = checkSchema.parse(req.body);
-    const rule = await rulesService.getRuleById(ruleId, req.apiKey.id);
+    const rule = await rulesService.getRuleById(ruleId, req.apiKey?.id!);
     // the main thing where the algorithm is called
     const result =
       rule.algorithm === "TOKEN_BUCKET"
@@ -28,7 +28,7 @@ const performCheck = async (req: Request, res: Response, next: NextFunction) => 
           userId: identifier,
           ruleId,
           allowed: result.allowed,
-          apiKeyId: req.apiKey.id,
+          apiKeyId: req.apiKey?.id!,
         },
       })
       .catch((err) => logger.error({ err }, "Failed to log request"));

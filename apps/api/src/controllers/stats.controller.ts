@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { Prisma } from "@prisma/client";
+import { keysService } from "../services/keys.service";
 
 const dateRangeSchema = z.object({
   from: z.coerce.date().optional(),
@@ -10,7 +11,7 @@ const dateRangeSchema = z.object({
 
 const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().max(100).default(50),
+  pageSize: z.coerce.number().int().positive().max(200).default(50),
 });
 
 function buildDateFilter(from?: Date, to?: Date): Prisma.RequestLogWhereInput {
@@ -27,14 +28,16 @@ function buildDateFilter(from?: Date, to?: Date): Prisma.RequestLogWhereInput {
 const getOverview = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { from, to } = dateRangeSchema.parse(req.query);
-    const apiKeyId = req.apiKey.id;
+    const keyIds = await keysService.getOwnerKeyIds(req.clerkUserId!);
 
     const where: Prisma.RequestLogWhereInput = {
-      apiKeyId,
+      apiKeyId: { in: keyIds },
       ...buildDateFilter(from, to),
     };
 
-    const [total, allowed, denied] = await Promise.all([
+    const [totalKeys, totalRules, total, allowed, denied] = await Promise.all([
+      prisma.apiKey.count({ where: { ownerId: req.clerkUserId! } }),
+      prisma.rule.count({ where: { apiKeyId: { in: keyIds } } }),
       prisma.requestLog.count({ where }),
       prisma.requestLog.count({ where: { ...where, allowed: true } }),
       prisma.requestLog.count({ where: { ...where, allowed: false } }),
@@ -51,6 +54,8 @@ const getOverview = async (req: Request, res: Response, next: NextFunction) => {
     res.json({
       success: true,
       data: {
+        totalKeys,
+        totalRules,
         total,
         allowed,
         denied,
@@ -71,10 +76,10 @@ const getRuleStats = async (req: Request, res: Response, next: NextFunction) => 
   try {
     const ruleId = req.params.id;
     const { from, to } = dateRangeSchema.parse(req.query);
-    const apiKeyId = req.apiKey.id;
+    const keyIds = await keysService.getOwnerKeyIds(req.clerkUserId!);
 
     const where: Prisma.RequestLogWhereInput = {
-      apiKeyId,
+      apiKeyId: { in: keyIds },
       ruleId,
       ...buildDateFilter(from, to),
     };
@@ -111,16 +116,20 @@ const getLogs = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { from, to } = dateRangeSchema.parse(req.query);
     const { page, pageSize } = paginationSchema.parse(req.query);
-    const apiKeyId = req.apiKey.id;
+    const keyIds = await keysService.getOwnerKeyIds(req.clerkUserId!);
 
     const where: Prisma.RequestLogWhereInput = {
-      apiKeyId,
+      apiKeyId: { in: keyIds },
       ...buildDateFilter(from, to),
     };
 
     const [logs, total] = await Promise.all([
       prisma.requestLog.findMany({
         where,
+        include: {
+          rule: { select: { id: true, name: true } },
+          apiKey: { select: { id: true, name: true } },
+        },
         orderBy: { timestamp: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,

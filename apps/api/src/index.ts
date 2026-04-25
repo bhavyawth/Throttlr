@@ -14,16 +14,19 @@ import { keysRouter } from "./routes/keys.route";
 import { authMiddleware } from "./middleware/auth.middleware";
 import { errorMiddleware } from "./middleware/error.middleware";
 import { rateLimitMiddleware } from "./middleware/rate-limit.middleware";
+import { clerkMiddleware } from "@clerk/express";
 
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "8080", 10);
+
 // global middlewares
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(rateLimitMiddleware());
+app.use(clerkMiddleware());
 
-// deep health check — pings Redis and Postgres, reports latency
+// ── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", async (_req, res) => {
   const timestamp = new Date().toISOString();
   const uptime = process.uptime();
@@ -63,18 +66,18 @@ app.get("/health", async (_req, res) => {
   });
 });
 
-// public routes (no auth required)
+// ── Dashboard routes (Clerk JWT auth) ────────────────────────────────────────
+// Each router applies clerkAuthMiddleware internally
 app.use("/keys", keysRouter);
-
-// protected routes (auth required)
-app.use("/", authMiddleware);
-app.use("/check", checkRouter);
 app.use("/rules", rulesRouter);
 app.use("/stats", statsRouter);
 
+// ── Consumer routes (API key auth) ───────────────────────────────────────────
+app.use("/check", authMiddleware, checkRouter);
+
 app.use(errorMiddleware);
 
-// connect to redisservice before starting the server
+// ── Bootstrap ────────────────────────────────────────────────────────────────
 async function bootstrap(): Promise<void> {
   await redisService.connect();
   app.listen(PORT, () => {
@@ -85,7 +88,7 @@ bootstrap().catch((err) => {
   logger.fatal({ err }, "Failed to start server");
   process.exit(1);
 });
-// avoid dirty shutdown
+
 async function shutdown(): Promise<void> {
   logger.info("Shutting down...");
   await redisService.disconnect();

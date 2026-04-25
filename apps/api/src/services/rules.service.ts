@@ -68,11 +68,23 @@ async function getRuleById(ruleId: string, apiKeyId: string) {
   return rule;
 }
 
-async function getRulesByApiKey(apiKeyId: string) {
+/** List rules across multiple API keys (owner-scoped) */
+async function getRulesByKeyIds(keyIds: string[]) {
   return prisma.rule.findMany({
-    where: { apiKeyId },
+    where: { apiKeyId: { in: keyIds } },
+    include: { apiKey: { select: { id: true, name: true } } },
     orderBy: { createdAt: "desc" },
   });
+}
+
+/** Get a single rule, but only if it belongs to one of the owner's keys */
+async function getRuleByIdForOwner(ruleId: string, ownerKeyIds: string[]) {
+  const rule = await prisma.rule.findUnique({
+    where: { id: ruleId },
+    include: { apiKey: { select: { id: true, name: true } } },
+  });
+  if (!rule || !ownerKeyIds.includes(rule.apiKeyId)) return null;
+  return rule;
 }
 
 interface UpdateRuleInput {
@@ -80,33 +92,33 @@ interface UpdateRuleInput {
   windowSizeSeconds?: number;
   maxRequests?: number;
   algorithm?: Algorithm;
+  isActive?: boolean;
 }
 
-async function updateRule(ruleId: string, apiKeyId: string, data: UpdateRuleInput) {
+async function updateRuleForOwner(ruleId: string, ownerKeyIds: string[], data: UpdateRuleInput) {
   const existing = await prisma.rule.findUnique({ where: { id: ruleId } });
-  if (!existing || existing.apiKeyId !== apiKeyId) throw new NotFoundError("Rule");
-  const updated = await prisma.rule.update({
-    where: { id: ruleId },
-    data,
-  });
+  if (!existing || !ownerKeyIds.includes(existing.apiKeyId)) return null;
+  const updated = await prisma.rule.update({ where: { id: ruleId }, data });
   await invalidateCache(ruleId);
   await cacheRule(ruleId, updated);
   rulesLogger.info({ ruleId, changes: Object.keys(data) }, "Rule updated");
   return updated;
 }
 
-async function deleteRule(ruleId: string, apiKeyId: string) {
+async function deleteRuleForOwner(ruleId: string, ownerKeyIds: string[]) {
   const existing = await prisma.rule.findUnique({ where: { id: ruleId } });
-  if (!existing || existing.apiKeyId !== apiKeyId) throw new NotFoundError("Rule");
+  if (!existing || !ownerKeyIds.includes(existing.apiKeyId)) return false;
   await prisma.rule.delete({ where: { id: ruleId } });
   await invalidateCache(ruleId);
   rulesLogger.info({ ruleId }, "Rule deleted");
+  return true;
 }
 
 export const rulesService = {
   createRule,
   getRuleById,
-  getRulesByApiKey,
-  updateRule,
-  deleteRule,
-}; // export as a single service here too...
+  getRulesByKeyIds,
+  getRuleByIdForOwner,
+  updateRuleForOwner,
+  deleteRuleForOwner,
+};

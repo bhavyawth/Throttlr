@@ -5,4 +5,3 @@ export const checkRouter = Router();
 
 // rate limiting check endpoint
 checkRouter.post("/", checkController.performCheck);
-
